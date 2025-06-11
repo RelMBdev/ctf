@@ -362,6 +362,11 @@ namespace CTF_int {
        * \brief returns true if prescale_operands has real work to do
        */
       bool need_prescale_operands();
+
+      /**
+       * \brief returns true if tensors are small enough to desymmetrize
+       */
+      bool is_ok_to_to_desym();
   };
 
   class contraction_signature {

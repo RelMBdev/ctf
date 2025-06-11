@@ -63,12 +63,8 @@ namespace CTF_int {
 #include "fompi_wrapper.h"
 
 namespace CTF_int {
-  //max total virtualization factor for mappings
-  #define MAX_NVIRT 256
-  //min total virtualization factor for mappings 
-  // (would be useful if explicit blockwise threading was enabled, which is not currently)
-  #ifndef MIN_NVIRT
-  #define MIN_NVIRT 1
+  #ifndef MAX_NVIRT
+  #define MAX_NVIRT 5000
   #endif
 
   #ifndef ENABLE_ASSERT

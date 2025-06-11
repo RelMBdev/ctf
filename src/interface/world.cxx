@@ -208,7 +208,7 @@ namespace CTF {
 
   int World::initialize(int                   argc,
                         const char * const *  argv){
-    char * mem_size, * cppn;
+    char * mem_size, * max_desym_size, * cppn;
     if (comm == MPI_COMM_WORLD && universe_exists){
       delete phys_topology;
       *this = universe;
@@ -274,15 +274,29 @@ namespace CTF {
         coeff_file = std::string(file_path);
         CTF_int::load_all_models(coeff_file);
       }
-    
+      int64_t imem_size = 0;
       mem_size = getenv("CTF_MEMORY_SIZE");
       if (mem_size != NULL){
-        int64_t imem_size = strtoull(mem_size,NULL,0);
+        imem_size = strtoull(mem_size,NULL,0);
         if (rank == 0)
           VPRINTF(1,"Memory size set to %ld by CTF_MEMORY_SIZE environment variable\n",
                     imem_size);
         CTF_int::set_mem_size(imem_size);
       }
+
+
+      max_desym_size = getenv("CTF_MAX_DESYM_SIZE");
+      if (max_desym_size != NULL){
+        int64_t imax_desym_size = strtoull(max_desym_size,NULL,0);
+        if (rank == 0)
+          VPRINTF(1,"Max desymmetrization tensor size set to %ld by CTF_AX_DESYM_SIZE environment variable\n",
+                    imax_desym_size);
+        CTF_int::set_max_desym_size(imax_desym_size);
+      } else if (imem_size != 0) {
+        CTF_int::set_max_desym_size(imem_size/6);
+      }
+
+
       cppn = getenv("CTF_PPN");
       if (cppn != NULL){
         int icppn = atoi(cppn);

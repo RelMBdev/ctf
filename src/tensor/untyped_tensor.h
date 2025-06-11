@@ -1042,9 +1042,10 @@ namespace CTF_int {
 
       /**
        * \brief checks if there is any symmetry defined as part of sym
-       * \return true if sym[i] != NS for some i
+       * \param[in] sym_type type of symmetry to check for
+       * \return true if sym_type = -1 and sym[i] != NS for some i or if sym[i] = sym_type
        */
-      bool has_symmetry() const;
+      bool has_symmetry(int sym_type=-1) const;
 
 
       /**

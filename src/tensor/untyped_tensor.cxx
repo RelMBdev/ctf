@@ -3948,10 +3948,10 @@ namespace CTF_int {
     delete func;
 	}
 
-  bool tensor::has_symmetry() const {
+  bool tensor::has_symmetry(int sym_type) const {
     bool is_nonsym=true;
     for (int i=0; i<order; i++){
-      if (sym[i] != NS){
+      if ((sym_type == -1 && sym[i] != NS) || (sym_type != -1 && sym[i] == sym_type)){
         is_nonsym = false;
       }
     }

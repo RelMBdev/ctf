@@ -508,6 +508,18 @@ namespace CTF_int {
        */
       char * read_all_pairs(int64_t * num_pair, bool unpack, bool nonzero_only=false) const;
 
+
+      /**
+       * \brief read all pairs with each processor (packed)
+       * \param[out] num_pair number of values read
+       * \param[in] unpack whether to read all or unique pairs up to symmetry
+       * \param[out] inds array of indices of nonzeros or all values
+       * \param[out] vals array of nonzeros or all values
+       * \param[in] nonzero_only whether to read only nonzeros
+       */
+      void read_all_pairs(int64_t * num_pair, bool unpack, int64_t ** inds, char ** vals, bool nonzero_only=false) const;
+
+
        /**
        * \brief accumulates out a slice (block) of this tensor = B
        *   B[offsets,ends)=beta*B[offsets,ends) + alpha*A[offsets_A,ends_A)
@@ -1030,9 +1042,10 @@ namespace CTF_int {
 
       /**
        * \brief checks if there is any symmetry defined as part of sym
-       * \return true if sym[i] != NS for some i
+       * \param[in] sym_type type of symmetry to check for
+       * \return true if sym_type = -1 and sym[i] != NS for some i or if sym[i] = sym_type
        */
-      bool has_symmetry() const;
+      bool has_symmetry(int sym_type=-1) const;
 
 
       /**

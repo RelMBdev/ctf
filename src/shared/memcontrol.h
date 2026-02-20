@@ -11,6 +11,8 @@ namespace CTF_int {
   int64_t proc_bytes_available();
   void set_memcap(double cap);
   void set_mem_size(int64_t size);
+  void set_max_desym_size(int64_t size);
+  int64_t get_max_desym_size();
   int get_num_instances();
   void start_memprof(int rank);
   void stop_memprof();

@@ -1394,7 +1394,7 @@ namespace CTF_int {
                                 Idx_Partition const & prl_,
                                 Idx_Partition const & blk){
     Idx_Partition prl = prl_.reduce_order();
-    topology * top = new topology(prl.part.order, prl.part.lens, wrld->cdt);
+    topology * top = new topology(prl.part.order, prl.part.lens, wrld->cdt, wrld->ppn);
     int itopo = find_topology(top, wrld->topovec);
 /*    if (wrld->rank == 0){
       for (int i=0; i<wrld->topovec.size(); i++){
@@ -2405,6 +2405,13 @@ namespace CTF_int {
     return ipr.ptr;
   }
 
+  void tensor::read_all_pairs(int64_t * num_pair, bool unpack, int64_t ** inds, char ** vals, bool nonzero_only) const {
+    char * pairs = read_all_pairs(num_pair, unpack, nonzero_only);
+    *inds = (int64_t*)malloc(sizeof(int64_t)*(*num_pair));
+    *vals = (char*)malloc(sr->el_size*(*num_pair));
+    sr->to_s_of_a(*num_pair, pairs, *inds, *vals);
+  }
+
   int64_t tensor::get_tot_size(bool packed=false){
     if (!packed){
       int64_t tsize = 1;
@@ -2964,14 +2971,12 @@ namespace CTF_int {
     }
   #endif
   #ifdef PROF_REDIST
+    Timer t_pf(spf);
+    t_pf.start();
     if (this->profile) {
       char spf[80];
       strcpy(spf,"redistribute_");
       strcat(spf,this->name);
-      if (wrld->cdt.rank == 0){
-        Timer t_pf(spf);
-        t_pf.start();
-      }
     }
   #endif
 #if VERIFY_REMAP
@@ -3052,11 +3057,8 @@ namespace CTF_int {
       char spf[80];
       strcpy(spf,"redistribute_");
       strcat(spf,this->name);
-      if (wrld->cdt.rank == 0){
-        Timer t_pf(spf);
-        t_pf.stop();
-      }
     }
+    t_pf.stop();
   #endif
   #if VERBOSE >=1
     if (wrld->cdt.rank == 0){
@@ -3295,6 +3297,7 @@ namespace CTF_int {
     TAU_FSTART(zero_out_padding);
 
     if (this->has_zero_edge_len || is_sparse){
+      TAU_FSTOP(zero_out_padding);
       return SUCCESS;
     }
     this->unfold();
@@ -3945,10 +3948,10 @@ namespace CTF_int {
     delete func;
 	}
 
-  bool tensor::has_symmetry() const {
+  bool tensor::has_symmetry(int sym_type) const {
     bool is_nonsym=true;
     for (int i=0; i<order; i++){
-      if (sym[i] != NS){
+      if ((sym_type == -1 && sym[i] != NS) || (sym_type != -1 && sym[i] == sym_type)){
         is_nonsym = false;
       }
     }

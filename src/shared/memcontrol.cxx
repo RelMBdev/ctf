@@ -47,6 +47,7 @@ namespace CTF_int {
   /* fraction of total memory which can be saturated */
   double memcap = 0.5;
   int64_t mem_size = 0;
+  int64_t max_desym_size = 0;
   #define MAX_THREADS 256
   int max_threads;
   int instance_counter = 0;
@@ -80,6 +81,21 @@ namespace CTF_int {
   void set_mem_size(int64_t size){
     mem_size = size;
   }
+
+  /**
+   * \brief sets a limit on size of tensor which CTF will desymmetrize during contraction
+   */
+  void set_max_desym_size(int64_t size){
+    max_desym_size = size;
+  }
+
+  /**
+   * \brief gets limit on size of tensor which CTF will desymmetrize during contraction
+   */
+  int64_t get_max_desym_size(){
+    return max_desym_size;
+  }
+
 
   /**
    * \brief sets what fraction of the memory capacity CTF can use

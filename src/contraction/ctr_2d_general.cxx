@@ -262,6 +262,23 @@ namespace CTF_int {
     return rec_ctr->est_time_rec(1)*(double)edge_len/MIN(nlyr,edge_len) + est_time_fp(nlyr);
   }
 
+  double ctr_2d_general::est_internode_collective_comm_vol(int nlyr) {
+    int64_t b_A, b_B, b_C, s_A, s_B, s_C, aux_size;
+    find_bsizes(b_A, b_B, b_C, s_A, s_B, s_C, aux_size);
+    double sz = 0.0;
+    if (move_A)
+      sz += (sr_A->el_size*s_A) * cdt_A->comm_nodes;
+    if (move_B)
+      sz += (sr_B->el_size*s_B) * cdt_B->comm_nodes;
+    if (move_C)
+      sz += (sr_C->el_size*s_C) * cdt_C->comm_nodes;
+    return (sz*(double)edge_len)/MIN(nlyr,edge_len);
+  }
+
+  double ctr_2d_general::est_internode_comm_vol_rec(int nlyr) {
+    return rec_ctr->est_internode_comm_vol_rec(1)*(double)edge_len/MIN(nlyr,edge_len) + est_internode_collective_comm_vol(nlyr);
+  }
+
   int64_t ctr_2d_general::mem_fp() {
     int64_t b_A, b_B, b_C, s_A, s_B, s_C, aux_size;
     find_bsizes(b_A, b_B, b_C, s_A, s_B, s_C, aux_size);

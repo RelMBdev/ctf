@@ -13,12 +13,25 @@ namespace CTF_int {
   /* \brief mesh/torus topology configuration */
   class topology {
     public:
+      // number of dimensions in torus
       int        order;
+      // lengths of dimensions
       int *      lens;
+      // lda[i] = lens[i-1] * ... * lens[0]
       int *      lda;
+      // global communicator is reordered if intra-node grid is provided
+      int        is_reordered;
+      // whether dim_comm communicators have been activated
       bool       is_activated;
+      /** \brief number of processors per physical node (optional / can be 1)*/
+      int        ppn;
+
+      // list of communicators along fibers of each dimension of torus 
       CommData * dim_comm;
+      // global communicator, ordered as in torus given by dim_comm
       CommData   glb_comm;
+      // global communicator, ordered as given, assuming processors are ordered as [processes in node 1], [processes in node 2], etc.
+      CommData   unord_glb_comm;
 
       //topology();
       ~topology();
@@ -29,17 +42,31 @@ namespace CTF_int {
        */
       topology(topology const & other);
 
+      /** 
+       * \brief overwrite this topology with communicators of another, without reallocating CommData objects, allowing to 'hot-swap' this topology for another, propagating change through creatred ctr objects
+       * \param[in] other topology to copy
+       */
+      void morph_to(topology const & other);
+
+
       /**
-       * \brief constructs torus topology 
+       * \brief constructs torus topology, if intra_node_lens is NULL, the p processors are folded into a torus, otherwise, the each set of prod(intra_node_lens) processors is mapped to different modes of the processor grid, e.g., if lens_ = [6,4] and intra_node_lens=[3,2] (6 processes per node), the processors are assiged as
+       * [[ 0  1  2  6  7  8 ],
+       *  [ 3  4  5  9  10 11],
+       *  [ 12 13 14 18 19 20],
+       *  [ 15 16 17 21 22 23]]
        * \param[in] order_ number of torus dimensions
        * \param[in] lens_ lengths of torus dimensions
        * \param[in] cdt communicator for whole torus 
        * \param[in] activate whether to create MPI_Comms
+       * \param[in] intra_node_lens lengths of intra-node processor grid
        */
       topology(int         order_,
                int const * lens_,
                CommData    cdt,
-               bool        activate=false);
+               int         ppn=1,
+               bool        activate=false,
+               int const * intra_node_lens=NULL);
      
       /* \brief create (split off) MPI communicators, re-entrant */ 
       void activate();
@@ -49,19 +76,42 @@ namespace CTF_int {
   };
 
   /**
+   * \brief determine this processors rank in the global communicator given by reordering nodes so that they adhere to the assignment described in the constructor of the topology() object, assuming initial order is node by node
+   *
+   * \param[in] order_ number of torus dimensions
+   * \param[in] lens_ lengths of torus dimensions
+   * \param[in] lda_ prefix product of lengths of torus dimensions
+   * \param[in] intra_node_lens lengths of intra-node processor grid
+   */
+  int get_topo_reorder_rank(int order, int const * lens, int const * lda, int const * intra_node_lens, int rank);
+
+  int get_inv_topo_reorder_rank(int order, int const * lens, int const * intra_node_lens, int new_rank);
+
+
+  /**
    * \brief get dimension and torus lengths of specified topology
    *
    * \param[in] glb_comm communicator
    * \param[in] mach specified topology
    */
   topology * get_phys_topo(CommData glb_comm,
-                           TOPOLOGY mach);
+                           TOPOLOGY mach,
+                           int      ppn);
+
+
+  /**
+   * \brief generate all possible factorizations of size into divisors
+  *  \param[in] total size that numbers should multiply to
+  *  \return all possible collections of natural numbers that multiply to size (excluding 1s)
+   */
+  std::vector< std::vector<int>* > get_all_shapes(int size);
+
 
   /**
    * \brief computes all topology configurations given undelying physical topology information
    * \param[in] cdt global communicator
    */
-  std::vector< topology* > get_generic_topovec(CommData   cdt);
+  std::vector< topology* > get_generic_topovec(CommData   cdt, int ppn);
 
   /**
    * \brief folds specified topology and all of its permutations into all configurations of lesser dimensionality

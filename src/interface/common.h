@@ -134,21 +134,32 @@ namespace CTF_int {
   // accumulates computed flops (targeted for internal use)
   void add_computed_flops(int64_t n);
 
+  void set_save_glb_comm(MPI_Comm gcm);
+
   // get computed flops
   int64_t get_computed_flops();
 
   // accumulates computed flops (targeted for internal use)
   void add_estimated_flops(int64_t n);
 
+  // wrapper of MPI communicator
   class CommData {
     public:
+      // MPI communicator
       MPI_Comm cm;
+      // number of processors
       int np;
+      // rank of processor
       int rank;
+      // color of subcommunicator cm relative to some parent commmunicator, if provided
       int color;
+      // 1 if this communicator is active (MPI_Comm is created and not finalized)
       int alive;
+      // 1 if this object created a communicator that needs to be finalized (as opposed to being an alias to a different communicator object)
       int created;
-  
+      // comm_nodes, average number of nodes a process needs to communicate with in this communicator, can be fraction in non node aware topology, if provided, 1. otherwise
+      double comm_nodes;
+
       CommData();
       ~CommData();
 
@@ -167,8 +178,9 @@ namespace CTF_int {
        * \param[in] rank rank within this comm
        * \param[in] color identifier of comm within parent
        * \param[in] np number of processors within this comm
+       * \param[in] intra_node_np number of processors per physical node
        */
-      CommData(int rank, int color, int np);
+      CommData(int rank, int color, int np, double comm_nodes=1.);
 
       /**
        * \brief create active subcomm from parent comm which must be active

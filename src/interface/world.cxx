@@ -58,6 +58,25 @@ namespace CTF {
   World::World(int            argc,
                char * const * argv){
     comm = MPI_COMM_WORLD;
+    ppn  = 1;
+#ifdef BGQ
+    this->init(comm, TOPOLOGY_BGQ, argc, argv);
+#else
+#ifdef BGP
+    this->init(comm, TOPOLOGY_BGP, argc, argv);
+#else
+    this->init(comm, TOPOLOGY_GENERIC, argc, argv);
+#endif
+#endif
+  }
+
+
+  World::World(MPI_Comm       comm_,
+               int            ppn_,
+               int            argc,
+               char * const * argv){
+    comm = comm_;
+    ppn  = ppn_;
 #ifdef BGQ
     this->init(comm, TOPOLOGY_BGQ, argc, argv);
 #else
@@ -74,6 +93,7 @@ namespace CTF {
                int            argc,
                char * const * argv){
     comm = comm_;
+    ppn  = 1;
 #ifdef BGQ
     this->init(comm, TOPOLOGY_BGQ, argc, argv);
 #else
@@ -92,11 +112,13 @@ namespace CTF {
                int             argc,
                char * const *  argv){
     comm = comm_;
+    ppn  = 1;
     this->init(comm, order, lens, argc, argv);
   }
 
   World::World(World const & other){
     comm        = other.comm;
+    ppn  = other.ppn;
 #if DEBUG >= 1
     if (other.rank == 0){
       printf("CTF WARNING: Creating copy of World, which is not free or useful, pass original World by reference instead if possible.\n");
@@ -167,7 +189,7 @@ namespace CTF {
     if (mach == TOPOLOGY_GENERIC)
       phys_topology = NULL;
     else
-      phys_topology = get_phys_topo(cdt, mach);
+      phys_topology = get_phys_topo(cdt, mach, ppn);
     
     return initialize(argc, argv);
   }
@@ -177,9 +199,8 @@ namespace CTF {
                   int const *          dim_len,
                   int                  argc,
                   const char * const * argv){
-
     cdt = CommData(global_context);
-    phys_topology = new topology(order, dim_len, cdt, 1);
+    phys_topology = new topology(order, dim_len, cdt, ppn, 1);
 
     return initialize(argc, argv);
   }
@@ -187,7 +208,7 @@ namespace CTF {
 
   int World::initialize(int                   argc,
                         const char * const *  argv){
-    char * mem_size, * ppn;
+    char * mem_size, * max_desym_size, * cppn;
     if (comm == MPI_COMM_WORLD && universe_exists){
       delete phys_topology;
       *this = universe;
@@ -198,8 +219,8 @@ namespace CTF {
       MPI_Comm_rank(comm, &rank);
       MPI_Comm_size(comm, &np);
       if (phys_topology == NULL){
-        phys_topology = get_phys_topo(cdt, TOPOLOGY_GENERIC);
-        topovec = get_generic_topovec(cdt);
+        phys_topology = get_phys_topo(cdt, TOPOLOGY_GENERIC, ppn);
+        topovec = get_generic_topovec(cdt, ppn);
 /*        std::vector<topology*> topovec2;
         topovec2 = peel_perm_torus(get_phys_topo(cdt, TOPOLOGY_GENERIC), cdt);
         printf("topovec size is %ld, via old method was %ld\n",topovec.size(), topovec2.size());*/
@@ -253,25 +274,43 @@ namespace CTF {
         coeff_file = std::string(file_path);
         CTF_int::load_all_models(coeff_file);
       }
-    
+      int64_t imem_size = 0;
       mem_size = getenv("CTF_MEMORY_SIZE");
       if (mem_size != NULL){
-        int64_t imem_size = strtoull(mem_size,NULL,0);
+        imem_size = strtoull(mem_size,NULL,0);
         if (rank == 0)
           VPRINTF(1,"Memory size set to %ld by CTF_MEMORY_SIZE environment variable\n",
                     imem_size);
         CTF_int::set_mem_size(imem_size);
       }
-      ppn = getenv("CTF_PPN");
-      if (ppn != NULL){
+
+
+      max_desym_size = getenv("CTF_MAX_DESYM_SIZE");
+      if (max_desym_size != NULL){
+        int64_t imax_desym_size = strtoull(max_desym_size,NULL,0);
         if (rank == 0)
-          printf("Assuming %d processes per node due to CTF_PPN environment variable\n",
-                    atoi(ppn));
-        ASSERT(atoi(ppn)>=1);
+          VPRINTF(1,"Max desymmetrization tensor size set to %ld by CTF_AX_DESYM_SIZE environment variable\n",
+                    imax_desym_size);
+        CTF_int::set_max_desym_size(imax_desym_size);
+      } else if (imem_size != 0) {
+        CTF_int::set_max_desym_size(imem_size/6);
+      }
+
+
+      cppn = getenv("CTF_PPN");
+      if (cppn != NULL){
+        int icppn = atoi(cppn);
+        if (rank == 0){
+          printf("CTF_PPN environment variable set to %d\n",icppn);
+          if (icppn<1 || all_np % icppn!=0) printf("This CTF_PPN value is invalid given the number of processors, aborting.\n");
+        }
+        assert(icppn>=1);
+        assert(all_np % icppn == 0);
   #ifdef BGQ
         CTF_int::set_memcap(.75);
   #else
-        CTF_int::set_memcap(.75/atof(ppn));
+        CTF_int::set_memcap(.75/atof(cppn));
+        ppn = atoi(cppn);
   #endif
       }
       if (rank == 0)

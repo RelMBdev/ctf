@@ -1168,7 +1168,7 @@ echo -n 'Checking whether to use CUDA... '
 if [ "x$NVCC" = "x" ]; then
   if [ $WITH_CUDA = 1 ]; then
     echo -n 'automatic nvcc setup requested... '
-    NVCC='nvcc -ccbin g++ -x cu'
+    NVCC='nvcc -forward-unknown-to-host-compiler -ccbin g++ -x cu'
     NVCCFLAGS='-O2 -std=c++11 -m64'
     LINKFLAGS="$LINKFLAGS -L${CUDA_ROOT}/lib64 -lcublas -lcudart"
     if testnvcc $VERBOSE; then
